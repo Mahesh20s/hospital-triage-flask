@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% macro sev(s) %}<b class="sev-{{ 'hi' if s >= 8 else 'mid' if s >= 5 else 'lo' }}">{{ s }}</b>{% endmacro %}
+{% block content %}
+
+<section class="stats">
+  <div class="stat"><span>{{ stats.total }}</span>Total</div>
+  <div class="stat"><span>{{ stats.waiting }}</span>Waiting</div>
+  <div class="stat"><span class="sev-hi">{{ stats.critical }}</span>Critical waiting</div>
+  <div class="stat"><span>{{ stats.treated }}</span>Treated</div>
+</section>
+
+<div class="grid">
+  <section class="card">
+    <h2>Admit patient <span class="tag">Hash table + Heap</span></h2>
+    <form method="post" action="{{ url_for('admit') }}">
+      <label>Name <input name="name" maxlength="40" required placeholder="Patient name"></label>
+      <label>Severity (1 to 10)
+        <select name="severity">
+          {% for i in range(1, 11) %}<option value="{{ i }}" {{ 'selected' if i == 5 }}>{{ i }}{{ ' (critical)' if i >= 8 }}</option>{% endfor %}
+        </select>
+      </label>
+      <button class="btn">Admit</button>
+    </form>
+    <div class="actions">
+      <form method="post" action="{{ url_for('treat') }}"><button class="btn sec">Treat next</button></form>
+      <form method="post" action="{{ url_for('undo') }}"><button class="btn sec">Undo ({{ undo_count }})</button></form>
+      <form method="post" action="{{ url_for('reset') }}"><button class="btn ghost">Reset</button></form>
+    </div>
+    <p class="why">Lookup by ID is O(1). The heap returns the most severe patient in O(log n). Undo pops a stack in O(1).</p>
+  </section>
+
+  <section class="card">
+    <h2>Waiting queue <span class="tag">Priority queue</span></h2>
+    {% if waiting %}
+    <ol class="queue">
+      {% for pid, p in waiting %}
+      <li>{{ sev(p.severity) }} <a href="{{ url_for('patient', pid=pid) }}">{{ p.name }}</a> <span class="muted">#{{ pid }}</span></li>
+      {% endfor %}
+    </ol>
+    {% else %}<p class="muted">Nobody is waiting.</p>{% endif %}
+    <p class="why">Highest severity first. Equal severity is served in arrival order.</p>
+  </section>
+</div>
+
+<section class="card">
+  <h2>Patients A to Z <span class="tag">Binary search tree</span></h2>
+  <form method="get" class="search">
+    <input name="q" value="{{ q }}" placeholder="Search by name or ID">
+    <button class="btn sec">Search</button>
+    {% if q %}<a class="btn ghost" href="{{ url_for('index') }}">Clear</a>{% endif %}
+  </form>
+  <div class="scroll">
+  <table>
+    <thead><tr><th>ID</th><th>Name</th><th>Severity</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+      {% for pid, p in patients %}
+      <tr><td>{{ pid }}</td><td>{{ p.name }}</td><td>{{ sev(p.severity) }}</td>
+          <td><span class="pill {{ p.status }}">{{ p.status }}</span></td>
+          <td><a href="{{ url_for('patient', pid=pid) }}">History</a></td></tr>
+      {% else %}<tr><td colspan="5" class="muted">No patients found.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+  </div>
+  <p class="why">An in-order traversal of the tree lists names alphabetically without sorting each time.</p>
+</section>
+
+<div class="grid">
+  <section class="card">
+    <h2>Ward route finder <span class="tag">Graph + BFS</span></h2>
+    <form method="get" class="route">
+      <select name="src">{% for w in wards %}<option {{ 'selected' if w == (src or 'ER') }}>{{ w }}</option>{% endfor %}</select>
+      <span>to</span>
+      <select name="dst">{% for w in wards %}<option {{ 'selected' if w == dst }}>{{ w }}</option>{% endfor %}</select>
+      <button class="btn">Find route</button>
+    </form>
+    {% if routed %}
+      {% if path %}
+      <p class="path">{% for w in path %}<span class="chip">{{ w }}</span>{% if not loop.last %} → {% endif %}{% endfor %}
+        <span class="muted">{{ path|length - 1 }} hops</span></p>
+      {% else %}<p class="muted">No route found.</p>{% endif %}
+    {% endif %}
+    <p class="why">Wards are nodes and corridors are edges. BFS finds the fewest hops in O(V + E).</p>
+  </section>
+
+  <section class="card" id="performance">
+    <h2>Performance analysis</h2>
+    <form method="post" action="{{ url_for('benchmark') }}"><button class="btn">Run benchmark</button></form>
+    {% if bench %}
+    <div class="scroll">
+    <table>
+      <thead><tr><th>Task</th><th>Efficient</th><th>Naive</th><th>Speedup</th></tr></thead>
+      <tbody>
+        {% for r in bench.rows %}
+        <tr><td>{{ r.task }}</td><td>{{ r.good }}: {{ r.good_t }}</td><td>{{ r.naive }}: {{ r.naive_t }}</td><td><b>{{ r.speedup }}</b></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
+    <p class="muted">Measured with {{ "{:,}".format(bench.n) }} records.</p>
+    {% endif %}
+    <p class="why">Compares the chosen structures against simple lists on the same data.</p>
+  </section>
+</div>
+{% endblock %}

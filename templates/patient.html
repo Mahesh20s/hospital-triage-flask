@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}{{ p.name }} · Hospital Triage{% endblock %}
+{% block content %}
+<section class="card">
+  <h2>{{ p.name }} <span class="muted">#{{ pid }}</span></h2>
+  <p>Severity <b class="sev-{{ 'hi' if p.severity >= 8 else 'mid' if p.severity >= 5 else 'lo' }}">{{ p.severity }}</b>
+     · Status: <b>{{ p.status }}</b></p>
+  <h3>History <span class="tag">Linked list</span></h3>
+  <ol class="timeline">{% for e in events %}<li>{{ e.event }} <span class="muted">· {{ e.time }}</span></li>{% endfor %}</ol>
+  <p><a class="btn sec" href="{{ url_for('index') }}">Back</a></p>
+</section>
+{% endblock %}
